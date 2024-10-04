@@ -7,6 +7,6 @@ istioctl install --set profile=ambient --skip-confirmation  --set values.cni.cni
 kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || \
   { kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml; }
 
-ISTIO_DOWNLOAD_DIR=~/Downloads/istio-1.23.0
+ISTIO_DOWNLOAD_DIR=~/istio-1.23.2
 kubectl apply -f $ISTIO_DOWNLOAD_DIR/samples/addons/prometheus.yaml
 kubectl apply -f $ISTIO_DOWNLOAD_DIR/samples/addons/kiali.yaml

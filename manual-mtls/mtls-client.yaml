@@ -35,7 +35,7 @@ spec:
       serviceAccountName: mtls-client
       containers:
       - name: mtls-client
-        image: linsun/mtls-client:latest
+        image: docker.io/npolshak/nina-client:manual-mtls
         command: ["/bin/sleep", "infinity"]
         imagePullPolicy: Always
 ---

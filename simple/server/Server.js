@@ -7,7 +7,7 @@ const options = {
 
 http.createServer(options, (req, res) => {
  res.writeHead(200, {});
- res.end('Hello Open Source Summit EU!\n');
+ res.end('Happy Navarathri CNCF!\n');
 }).listen(3000, () => {
  console.log('Server is running on port 3000');
 });

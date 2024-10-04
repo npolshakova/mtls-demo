@@ -12,7 +12,7 @@ openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 cat server/server.crt | step certificate inspect -
 
 # start the server & client
-node Server.js
+node server/Server.js
 
 # generate client key/CSR/cert
 openssl genpkey -out client.key -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-128-cbc
