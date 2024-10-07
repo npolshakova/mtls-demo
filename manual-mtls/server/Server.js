@@ -3,15 +3,16 @@ const fs = require('fs');
 const { Http2ServerRequest } = require('node:http2');
 
 const options = {
- key: fs.readFileSync('./server.key'),
- cert: fs.readFileSync('./server.crt'),
- ca: [
+ key: fs.readFileSync('./server.key'), // encrypt the server's communication 
+ cert: fs.readFileSync('./server.crt'), // verify the server’s identity
+ ca: [ // this is the cert the server can trust 
    fs.readFileSync('./client.crt'),
  ],
- requestCert: true,
- passphrase: 'hello'
+ requestCert: true, // the client must present cert before communication can happen (enables mTLS)
+ passphrase: 'hello' // passphrase I used to generate the keys 
 };
 
+// now listening on https (not http)
 https.createServer(options, (req, res) => {
  res.writeHead(200, {});
  res.end('Happy Navarathri CNCF!\n');
