@@ -136,6 +136,18 @@ View the "traffic graph" in Kiali and enable the  security badges display:
 istioctl dashboard kiali -n monitoring 
 ```
 
+## Debug ztunnel
+
+1. You can view all the workloads and control plane components that ztunnel is currently tracking via:
+```shell 
+ istioctl ztunnel-config workloads
+```
+
+2. You can view the secrets holding the TLS certificates that the ztunnel proxy has received from the istiod control plane to use for mTLS:
+```shell
+istioctl ztunnel-config certificates "<ZTUNNEL_POD>".istio-system
+```
+
 ## Policy 
 
 1. Apply deny-all policy. This is in `istio-system` so it will apply to the whole mesh.
