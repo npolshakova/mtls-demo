@@ -1,4 +1,6 @@
-## Demystifying Zero Trust Cloud Native Security
+# Demystifying Zero Trust Cloud Native Security
+
+## Background
 
 <img src="./images/lifecycle-phases-cloudnative-app.png" width="500"><br>Cloud Native App Lifecycle Phases</img>
 
@@ -28,7 +30,7 @@ All of these practices are critical to building secure cloud-native applications
 2. Independent Authentication: Entities authenticate each other using decentralized mechanisms (e.g., PKI).
 3. Secure Communication: Ensure confidentiality and integrity of communications between entities.
 
-### Setup Environment
+# Setup Environment
 
 The following has been tested on a Macbook M2 pro:
 
@@ -37,18 +39,6 @@ To standup the environment:
 
 ```
 ./setup-env.sh
-```
-
-1. Follow the `steps` file in `/simple` folder for simple plain text, up to the line that says "Label the namespace".
-
-2. Follow the `steps` file in `/manual-mtls` folder for doing mTLS the hard way.
-
-3. Follow the `steps` file in `/simple` folder for simple plain text, from the line that says "Label the namespace" to do mtls the simple way!
-   
-To tear down the environment:
-
-```
-./teardown.sh
 ```
 
 # Walkthrough 
@@ -70,11 +60,11 @@ Another requirement for zero trust is that each entity authenticates each other 
 1. Apply the server and client deployments:
 
 ```shell
-kubectl apply -f server.yaml
-kubectl apply -f client.yaml
+kubectl apply -f no-mtls-app/server.yaml
+kubectl apply -f no-mtls-app/client.yaml
 ```
 
-2. Send some traffic from the client to the server:
+2. Send some http traffic from the client to the server:
 ```shell
 kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -v
 ```
@@ -115,23 +105,23 @@ openssl x509 -req -days 365 -in client.csr -signkey client.key -out client.crt
 
 1. View the CSR 
 ```shell
-openssl req -in server/server.csr -noout -text
+openssl req -in manual-mtls/server/server.csr -noout -text
 ```
 
 2. Step through the server cert
 ```shell
-cat server/server.crt | step certificate inspect -
+cat manual-mtls/server/server.crt | step certificate inspect -
 ```
 
 3. View the server code:
 ```shell
-cat server/Server.js
+cat manual-mtls/server/Server.js
 ```
 
 4. Apply the client and server deployments:
 ```shell 
-kubectl apply -f mtls-server.yaml
-kubectl apply -f mtls-client.yaml
+kubectl apply -f manual-mtls/mtls-server.yaml
+kubectl apply -f manual-mtls/mtls-client.yaml
 ``` 
 
 5. Send traffic, first attempt a request with no cert:
@@ -167,20 +157,38 @@ The Istio CA is responsible for issuing and managing certificates for the sideca
 
 <img src="./images/istio-identity.png" width="500"><br>mTLS with Istio Sidecar</img>
 
-1. Label the namespace for istio injection:
+1. Let's go back to our "insecure" setup with no mTLS:
 
 ```shell
-kubectl label namespace default istio.io/inject=enabled
+kubectl exec deploy/client -c client -- curl -s "http://server:3000/"
 ```
 
-2. Restart the client and server deployments:
+2. Label the namespace for istio injection:
+
+```shell
+kubectl label namespace default istio-injection=enabled 
+```
+
+3. Restart the client and server deployments:
 
 ```shell
 kubectl rollout restart deploy/client
-kubectl rollout restart deploy/server
+kubectl rollout restart deploy/server-v1
 ```
 
-3. Send traffic with http:
+4. View the pods in the default namespace:
+```shell
+kubectl get pods -n default
+```
+
+We should see that the server-v1 and client pods are running with two containers:
+```shell 
+NAME                           READY   STATUS    RESTARTS   AGE
+client-548bd7c74c-77mc6        2/2     Running   0          52s
+server-v1-6d866697d9-6f7wk     2/2     Running   0          52s
+```
+
+5. Send traffic with http:
 
 ```shell
 for i in {2..1000}
@@ -190,17 +198,22 @@ do
 done
 ```
 
-4. View the `istio_tcp_received_bytes_total` in prometheus:
+6. View the `istio_requests_total{app="server"}` in prometheus:
 
 ```shell 
 istioctl dashboard prometheus -n monitoring 
 ```
 
-5. Let's clean up the environment for the next section:
+7. Let's clean up the environment for the next section:
 ```shell
-kubectl label namespace default istio.io/inject-
+kubectl label namespace default istio-injection-
 kubectl rollout restart deploy/client
-kubectl rollout restart deploy/server
+kubectl rollout restart deploy/server-v1
+```
+
+Confirm that the server-v1 and client pods are running with a single container:
+```shell
+kubectl get pods -n default
 ```
 
 ## mTLS the "easy" way
@@ -233,7 +246,7 @@ done
 
 ## View in prometheus 
 
-View the `istio_tcp_received_bytes_total`:
+View the `istio_tcp_received_bytes_total{destination_workload="server-v1"}` metric:
 
 ```shell 
 istioctl dashboard prometheus -n monitoring 
@@ -242,7 +255,7 @@ istioctl dashboard prometheus -n monitoring
 
 ## View in Kiali 
 
-View the "traffic graph" in Kiali and enable the  security badges display:
+View the "traffic graph" in Kiali and enable the security badges display under the Display dropdown:
 
 ```shell
 istioctl dashboard kiali -n monitoring 
@@ -255,6 +268,8 @@ istioctl dashboard kiali -n monitoring
  istioctl ztunnel-config workloads
 ```
 
+Notice the default namespace is set to use `HBONE` (HTTP-Based Overlay Network Environment) as the protocol. `HBONE` is a secure tunneling protocol that transparently multiplexes TCP streams from multiple application connections over a single, mTLS-encrypted network connection, effectively creating an encrypted tunnel. See the [istio documentation](https://istio.io/latest/docs/ambient/architecture/hbone/) for more implementation details.
+
 2. You can view the secrets holding the TLS certificates that the ztunnel proxy has received from the istiod control plane to use for mTLS:
 ```shell
 istioctl ztunnel-config certificates "<ZTUNNEL_POD>".istio-system
@@ -262,7 +277,7 @@ istioctl ztunnel-config certificates "<ZTUNNEL_POD>".istio-system
 
 ## Policy 
 
-Istio policies still work in Ambient mode, but the policy enforcement is done by a "Waypoint" if the policy is L7 and by the ztunnel if the policy is L4. 
+The same Istio security policies that worked in sidecar mode still work in Ambient mode, but the policy enforcement is done by a "Waypoint" if the policy is L7 and by the ztunnel if the policy is L4. 
 
 <img src="./images/ambient-waypoint.png" width="500"><br>Waypoint with Ambient Mode</img>
 
@@ -288,7 +303,12 @@ kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -v
 
 3. Apply a waypoint:
 ```shell
-kubectl apply -f policy/waypoint.yaml
+istioctl waypoint apply --enroll-namespace --wait
+```
+
+View the waypoint:
+```shell
+kubectl get gtw waypoint
 ```
 
 4. Let's apply a L7 policy:
@@ -296,6 +316,12 @@ kubectl apply -f policy/waypoint.yaml
 kubectl apply -f policy/client-to-server-l7.yaml
 ```
 
+This request should fail with `RBAC: access denied`:
+```shell 
+kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -H "x-test-me: mwahaha" -v
+```
+
+This request should succeed:
 ```shell 
 kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -H "x-test-me: approved" -v
 ```
@@ -304,4 +330,24 @@ kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -H "x-test
 
 ```shell
 kubectl apply -f policy/peerauth-strict.yaml
+```
+
+Let's test this by applying a new client in a different namespace:
+
+```shell
+kubectl create ns hacker
+kubectl apply -f no-mtls-app/client.yaml -n hacker
+```
+
+This request should fail with `RBAC: access denied`:
+```shell 
+kubectl exec deploy/client -c client -n hacker -- curl -s "http://server.default:3000/" -H "x-test-me: approved" -v
+```
+
+# Clean up
+
+To tear down the environment:
+
+```
+./teardown.sh
 ```

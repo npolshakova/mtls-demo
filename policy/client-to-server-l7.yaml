@@ -1,0 +1,24 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-client-to-server-waypoint
+  namespace: default
+spec:
+  targetRefs:
+  - kind: Service
+    group: ""
+    name: server
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/default/sa/client
+    to:
+    - operation:
+        methods: ["GET"] 
+    when:
+    - key: request.headers[x-test-me]
+      values: ["approved"]
+    - key: source.namespace
+      values: ["default"]       

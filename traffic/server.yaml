@@ -53,7 +53,7 @@ spec:
       serviceAccountName: server
       containers:
       - name: server
-        image: docker.io/linsun/server:simple
+        image: docker.io/npolshak/server:no-mtls
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

@@ -35,7 +35,7 @@ spec:
       serviceAccountName: server
       containers:
       - name: server
-        image: docker.io/linsun/server:simplev2
+        image: docker.io/linsun/server:no-mtls-v2
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
