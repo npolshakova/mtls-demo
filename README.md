@@ -1,23 +1,25 @@
-# Demystifying Zero Trust Cloud Native Security
+# Demystifying Zero Trust Cloud Native Security 🔐✨  
 
-## Background
+A quick look at how to implement mTLS and Zero Trust—the hard way, the easy way, and the even easier way.  
+
+## Background 
+
+In a cloud-native world, security should be integrated throughout the development lifecycle of an application.
 
 <img src="./images/lifecycle-phases-cloudnative-app.png" width="500"><br>Cloud Native App Lifecycle Phases</img>
 
-Cloud-native application security should be integrated throughout the development lifecycle. Developers can use IDE security plugins and enforce secure coding practices early on, while Infrastructure as Code (IaC) should embed security controls and automate policy checks. Pre-commit hooks help prevent secrets from being committed, and supply chain management ensures dependencies are trusted and verified. Security scans, including static analysis, vulnerability scans, and workload manifest checks, help detect misconfigurations and vulnerabilities before deployment.
-
-All of these practices are critical to building secure cloud-native applications, but this demo specifically focuses on Zero Trust in the context of runtime.
+All of these practices are critical to building secure cloud-native applications, but these examples specifically focuses on different ways of achieving Zero Trust in the context of runtime security.
 
 <img src="./images/cloudnative-runtime-security.png" width="500"><br>Cloud Native Runtime Security. Source: https://www.cncf.io/wp-content/uploads/2022/06/CNCF_cloud-native-security-whitepaper-May2022-v2.pdf </img>
 
 
 ### Unique Security Challenges for Cloud Native Apps
 
-- Dynamic Environments: Frequent changes in infrastructure, ephemeral workloads, and autoscaling require constant monitoring and adaptation of security policies.
+- **Dynamic Environments**: Frequent changes in infrastructure, ephemeral workloads, and autoscaling require constant monitoring and adaptation of security policies.
 
-- Container Security: Containers bring new attack surfaces, including vulnerabilities in container images, runtime environments, and orchestrator exploits.
+- **Container Security**: Containers bring new attack surfaces, including vulnerabilities in container images, runtime environments, and orchestrator exploits.
 
-- Identity Management: Traditional security relies on static identities like network IPs, while cloud-native workloads use unique dynamic identities (e.g., SPIFFE IDs) to establish trust, enable workload-level access control, and secure communication in dynamic, scalable environments.
+- **Identity Management**: Traditional security relies on static identities like network IPs, while cloud-native workloads use unique dynamic identities (e.g., SPIFFE IDs) to establish trust, enable workload-level access control, and secure communication in dynamic, scalable environments.
 
 ## What is Zero Trust?
 
@@ -34,8 +36,9 @@ All of these practices are critical to building secure cloud-native applications
 
 The following has been tested on a Macbook M2 pro:
 
-Following [instruction](https://istio.io/latest/docs/setup/getting-started/#download) to download Istio 1.23.0 which includes the `istioctl` CLI.
-To standup the environment:
+Following [instruction](https://istio.io/latest/docs/setup/getting-started/#download) to download Istio 1.25.0 (the latest version) which includes the `istioctl` CLI.
+
+To standup the environment (sets up a k3d cluster with Istio control plane, prometheus, and kiali):
 
 ```
 ./setup-env.sh
@@ -43,17 +46,7 @@ To standup the environment:
 
 # Walkthrough 
 
-## How to establish identity? 
-
-A certificate is a **digital document** that verifies the identity of an entity (server or client) by linking it to a public key. 
-
-<img src="./images/establish-identity.png" width="500">
-
-## How does independent authentication work?
-
-Another requirement for zero trust is that each entity authenticates each other using a decentralized mechanism (e.g., PKI).
-
-<img src="./images/independent-authentication.png" width="500">
+Now that the environment is set up, let's walk through the examples.
 
 ## No mTLS
 
@@ -71,24 +64,38 @@ kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -v
 
 ## Manual mTLS
 
+Now let's add some mTLS!
+
 <img src="./images/mtls.png" width="500"><br>Mutual Transport Layer Security (mTLS)</img>
+
+1. First we need to generate the certs we'll use for mTLS
+
+How do we establish identity for our client and server? With certs!
+
+A certificate is a **digital document** that verifies the identity of an entity (server or client) by linking it to a public key. 
+
+<img src="./images/establish-identity.png" width="1000">
 
 The `server.key` is generated with the `hello` passphrase:
 ```shell 
 openssl genpkey -out server.key -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-128-cbc
 ```
 
-The CSR `server.csr` is generated with `openssl`. Make sure to use `mtls-server` for the CN to match the hostname of the deployed server:
+2. The CSR `server.csr` is generated with `openssl`. Make sure to use `mtls-server` for the CN to match the hostname of the deployed server:
 ```shell
 openssl req -new  -key server.key -out server.csr
 ```
 
-Then the self signed server cert `server.cert` is requested:
+3. Now for the "independent" authentication part. Remember, another requirement for zero trust is that each entity authenticates each other using a decentralized mechanism (e.g., PKI).
+
+<img src="./images/independent-authentication.png" width="500">
+
+For this demo we will use self-signed certs. The self signed server cert `server.cert` is requested:
 ```shell
 openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 ```
 
-The client key `client.key` is generated with:
+Now we need to do the same thing for the client. First the client key `client.key` is generated with:
 ```shell
 openssl genpkey -out client.key -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-128-cbc
 ```

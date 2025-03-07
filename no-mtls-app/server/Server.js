@@ -1,9 +1,6 @@
 const http = require('node:http');
-const fs = require('fs');
-const { Http2ServerRequest } = require('node:http2');
 
-const options = {
-};
+const options = {};
 
 http.createServer(options, (req, res) => {
  res.writeHead(200, {});

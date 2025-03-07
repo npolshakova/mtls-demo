@@ -1,6 +1,5 @@
 const https = require('node:https');
 const fs = require('fs');
-const { Http2ServerRequest } = require('node:http2');
 
 const options = {
  key: fs.readFileSync('./server.key'), // encrypt the server's communication 
