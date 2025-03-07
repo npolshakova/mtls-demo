@@ -300,6 +300,7 @@ kubectl exec deploy/client -c client -- curl -s "http://server:3000/" -v
 
 2. Only grant permissions based on zero trust principals (only grant access to apps that need it)
 ```shell
+kubectl delete -f policy/deny-all.yaml
 kubectl apply -f policy/client-to-server-l4.yaml
 ```
 
@@ -320,6 +321,7 @@ kubectl get gtw waypoint
 
 4. Let's apply a L7 policy:
 ```shell
+kubectl delete -f policy/client-to-server-l4.yaml
 kubectl apply -f policy/client-to-server-l7.yaml
 ```
 
@@ -358,3 +360,5 @@ To tear down the environment:
 ```
 ./teardown.sh
 ```
+
+"Never trust, always verify!" 
